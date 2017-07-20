@@ -1,4 +1,6 @@
-##OTUtable_normalized is the file acquired after applying R codes for sample normalization "R codes to normalize sequence libraries from SIP experiments"
+## Genus specific 95% confidence level calculator
+## Written by Dr. Arda Gülay (2017), DTU @ Technical University of Denmark.
+## OTUtable_normalized is the file acquired after applying R codes for sample normalization "R codes to normalize sequence libraries from SIP experiments"
 
 library(reshape2)
 OTUtable_normalized->b_clean
