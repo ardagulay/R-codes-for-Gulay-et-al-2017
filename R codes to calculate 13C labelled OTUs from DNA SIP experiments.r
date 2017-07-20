@@ -1,8 +1,10 @@
-## Genus specific 95% confidence level calculator
+## R codes to calculate 13C labelled OTUs from DNA SIP experiments
 ## Written by Dr. Arda Gülay (2017), DTU @ Technical University of Denmark.
-## OTUtable_normalized is the file acquired after applying R codes for sample normalization "R codes to normalize sequence libraries from SIP experiments"
 
 library(reshape2)
+
+## OTUtable_normalized is the file acquired after applying R codes for sample normalization "R codes to normalize sequence libraries from SIP experiments"
+
 OTUtable_normalized->b_clean
 melt(b_clean)->b_clean
 
