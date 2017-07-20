@@ -1,0 +1,82 @@
+## Genus specific 95% confidence level calculator
+## Written by Dr. Arda Gülay (2017), DTU @ Technical University of Denmark.
+
+
+library(boot)
+bootThetaQuantile <- function(x,i) {
+quantile(x[i], probs=.5)
+}
+bootThetaMean <- function(x,i) {
+mean(x[i])
+}
+read.table("R1C1_CL.txt",header=TRUE)->Labelled_OTUs
+
+##You can see the file input (R1C1_CL.txt)below:
+
+## OTU	Sample	Shift	Taxa
+## denovo1027466	DNA_C4vsC3	17.24261473	Woodsholea
+## denovo1068	DNA_C4vsC3	16.32028357	Woodsholea
+## denovo113844	DNA_C4vsC3	1.182548979	Woodsholea
+## denovo1144340	DNA_C4vsC3	7.061864355	Woodsholea
+## denovo1264748	DNA_C4vsC3	1.850697307	Woodsholea
+## denovo1305033	DNA_C4vsC3	24.71932255	Woodsholea
+## denovo1346868	DNA_C4vsC3	32.81161689	Woodsholea
+
+ci.95_list<-c()
+selected_OTUlist<-c()
+	for(z in unique(Labelled_OTUs$Sample))
+	{
+	DNA_RNA<-Labelled_OTUs[which(Labelled_OTUs$Sample==z),]
+	
+		for(j in unique(DNA_RNA$Taxa))
+		{
+		functional_group<-DNA_RNA[which(DNA_RNA$Taxa==j),]
+  
+			if(length(functional_group$OTU)<3) {next}
+		
+		nboot <- 1000 # Number of simulations
+		alpha <- .05 # alpha level
+		n <- length(functional_group$OTU)
+		( theta.boot.median <- boot(functional_group$Shift, bootThetaQuantile, R=nboot) )
+		boot.ci(theta.boot.median, conf=(1-alpha))
+		( theta.boot.mean <- boot(functional_group$Shift, bootThetaMean, R=nboot) )
+		boot.ci(theta.boot.mean, conf=(1-alpha))
+		my.replicate <- replicate(nboot, functional_group$Shift[sample(1:length(functional_group$Shift), n, replace=TRUE)])
+		theta.median <- apply(my.replicate, 2, bootThetaQuantile)
+		theta.mean <- apply(my.replicate, 2, bootThetaMean)
+	
+		critical.t.low <-sort(theta.mean)[nboot*alpha/2]
+		critical.t.high <-sort(theta.mean)[nboot*(1-alpha/2)]
+		ci.95_list<-rbind(ci.95_list,cbind(as.character(z), as.character(j), critical.t.low )) 
+	}	}
+colnames(ci.95_list) <- c("Sample","Taxa","critical.t.low")
+ci.95_list<-as.data.frame(ci.95_list)
+write.table(ci.95_list,file=paste(as.character(z), ".ci.95_list.txt", sep=""),sep = "\t")
+ 
+selected_OTUlist<-c() 
+	for(j in 1:length(Labelled_OTUs$OTU))
+	{
+	Labelled_OTUs$Taxa[j]->Taxaname
+	Labelled_OTUs$OTU[j]->OTUname
+	paste("^",OTUname,"$", sep="")->OTUname
+	Labelled_OTUs[grep(OTUname, Labelled_OTUs$OTU, ignore.case=F),]->OTU_grep
+ 
+		if(grepl("DNA", OTU_grep$Sample))
+		{
+		functional_group<-ci.95_list[which(ci.95_list$Taxa==as.character(OTU_grep$Taxa)),]
+		functional_group<-functional_group[grepl("DNA",functional_group$Sample , ignore.case=F),]
+			if(as.character(functional_group)[1]== "integer(0)"){selected_OTUlist<-rbind(selected_OTUlist,OTU_grep)
+			} else { 
+				if(OTU_grep$Shift>(as.double(as.character(functional_group$critical.t.low)))){selected_OTUlist<-rbind(selected_OTUlist,OTU_grep)
+				} else {next}} 
+		} else {
+		functional_group<-ci.95_list[which(ci.95_list$Taxa==as.character(OTU_grep$Taxa)),]
+		functional_group<-functional_group[grepl("R",functional_group$Sample , ignore.case=F),]
+			if(as.character(functional_group)[1]== "integer(0)"){selected_OTUlist<-rbind(selected_OTUlist,OTU_grep)
+			} else { 
+				if(OTU_grep$Shift>(as.double(as.character(functional_group$critical.t.low)))){selected_OTUlist<-rbind(selected_OTUlist,OTU_grep)
+				} else {next}}
+		}
+}
+selected_OTUlist<-as.data.frame(selected_OTUlist)
+write.table(selected_OTUlist,file=paste(as.character(z), ".selected_OTUlist.txt", sep=""),sep = "\t")

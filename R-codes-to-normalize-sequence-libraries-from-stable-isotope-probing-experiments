@@ -1,0 +1,39 @@
+## R-codes-to-normalize-sequence-libraries-from-stable-isotope-probing-experiments
+## Written by Dr. Arda Gülay (2017), DTU @ Technical University of Denmark.
+
+library(reshape2)
+library(phyloseq)
+
+read.table("DNA_density_modified.txt",header=TRUE)->DNA_density
+read.table("DNA_density_modified_model_normalized.txt")->samples
+read.table("DNA_density_qiime_samples_total.txt",header=T)->samples_total
+
+import_qiime(mapfilename = "DNA_RNA_map.txt")->map
+import_biom("../otutable_97_mothur_qiime_pick_blast_json.biom")->a
+merge_phyloseq(a,map)->a_last
+
+c(sample_names(a_last)[grep("Original",sample_names(a_last))])->original
+c(sample_names(a_last)[grep("Influent",sample_names(a_last))])->influent
+c(sample_names(a_last)[grep(".DNA",sample_names(a_last))])->cDNA
+c(original,influent,cDNA)->samples_to_remove
+subset_samples(a_last, !X.SampleID%in%samples_to_remove)->a_last
+transform_sample_counts(a_last, function(OTU) OTU/sum(OTU))-> a_last_relative
+filter_taxa(a_last_relative, function(x) mean(x) > 1e-6, TRUE)->a_last_relative
+
+normalized_otutablelist<-c()
+
+	for(j in 1:length(unique(colnames(otuTable(a_last_relative)))))
+	{
+    colnames(otuTable(a_last_relative))[j]->samplename
+    otuTable(a_last_relative)[,j]->SAMPLE_grep
+    print(samplename)
+    paste("^",samplename,"$", sep="")->samplename
+    DNA_density[grep(samplename, DNA_density$Sample, ignore.case=F),]->Sample_grep_selected
+    Sample_grep_selected$Amount*SAMPLE_grep*100->normalized
+    normalized_otutablelist<-cbind(normalized_otutablelist,normalized)
+	}
+	
+as.data.frame( normalized_otutablelist)-> normalized_otutablelist
+write.table( normalized_otutablelist," normalized_otutablelist.txt", sep="\t")
+OTUtable_normalized <- otuTable(normalized_otutablelist, taxa_are_rows=TRUE)
+prune_taxa(taxa_sums(OTUtable_normalized ) > 0, OTUtable_normalized )->OTUtable_normalized 
